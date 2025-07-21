@@ -69,8 +69,6 @@
                         <select id="vehicleType" required>
                             <option value="">Selecione...</option>
                             <option value="carregamento">Carregamento</option>
-                            <option value="cliente_retira">Cliente Retira</option>
-                            <option value="separacao">Separação</option>
                         </select>
                     </div>
 
@@ -176,7 +174,7 @@
             messagingSenderId: "1073200439869",
             appId: "1:1073200439869:web:2616ac068ee7488c21c054",
             measurementId: "G-B9QGYWE6D9"
-            };
+        };
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
@@ -288,7 +286,7 @@
         }
 
         function loadActiveProcesses() {
-            db.ref('processos').on('value', snapshot => {  // Removido o filtro por createdBy
+            db.ref('processos').on('value', snapshot => {
                 processes = {};
                 if (snapshot.exists()) {
                     snapshot.forEach(processSnapshot => {
@@ -334,9 +332,6 @@
             });
         }
 
-        // Atualiza os timers de pausa a cada segundo
-        setInterval(updatePauseTimers, 1000);
-
         function updateAllTimers() {
             Object.keys(processes).forEach(processId => {
                 const process = processes[processId];
@@ -349,9 +344,6 @@
                 }
             });
         }
-
-        // Atualiza todos os timers a cada segundo
-        setInterval(updateAllTimers, 1000);
 
         function renderProcessCards() {
             elements.processCardsContainer.innerHTML = '';
@@ -367,15 +359,8 @@
             });
         }
 
-        
-        setInterval(() => {
-            updateAllTimers();
-            updatePauseTimers();
-        }, 1000);
-
         function efficientUpdate() {
             const now = Date.now();
-            // Só atualiza a cada 500ms para melhor performance
             if (now - lastUpdate > 500) {
                 updateAllTimers();
                 updatePauseTimers();
@@ -384,7 +369,6 @@
             requestAnimationFrame(efficientUpdate);
         }
 
-        // Inicia o loop de atualização
         efficientUpdate();
 
         function createProcessCard(process) {
@@ -434,7 +418,6 @@
             const actions = document.createElement('div');
             actions.className = 'process-card-actions';
             
-            // Botão de pausa/continuar - SEMPRE visível exceto quando concluído
             if (process.status !== 'completed') {
                 const pauseBtn = document.createElement('button');
                 pauseBtn.className = process.status === 'paused' ? 'btn success-btn' : 'btn warning-btn';
@@ -445,18 +428,15 @@
                 actions.appendChild(pauseBtn);
             }
             
-            // Container para botões de etapa
             const stepButtonsContainer = document.createElement('div');
             stepButtonsContainer.className = 'step-buttons';
             
-            // Botões específicos da etapa atual
             if (process.status !== 'completed') {
                 addStepButtons(stepButtonsContainer, process);
             }
             
             actions.appendChild(stepButtonsContainer);
             
-            // Botão de cancelar - SEMPRE visível exceto quando concluído
             if (process.status !== 'completed') {
                 const cancelBtn = document.createElement('button');
                 cancelBtn.className = 'btn danger-btn';
@@ -487,7 +467,6 @@
             const updates = {};
 
             if (process.status === 'paused') {
-                // Continuar o processo
                 updates.status = 'in_progress';
                 updates.resumeTime = now;
                 
@@ -504,14 +483,12 @@
                             delete pauseTimers[processId];
                         }
                         
-                        // Esconder o timer de pausa
                         const pauseTimerElement = document.getElementById(`pause-timer-${processId}`);
                         if (pauseTimerElement) {
                             pauseTimerElement.style.display = 'none';
                         }
                     });
             } else {
-                // Pausar o processo
                 updates.status = 'paused';
                 updates.pauseStartTime = now;
                 
@@ -522,7 +499,6 @@
                             delete timers[processId];
                         }
                         
-                        // Mostrar o timer de pausa
                         const pauseTimerElement = document.getElementById(`pause-timer-${processId}`);
                         if (pauseTimerElement) {
                             pauseTimerElement.style.display = 'block';
@@ -566,28 +542,16 @@
             const currentStepIndex = process.currentStep ? stepsOrder.indexOf(process.currentStep) : -1;
             
             if (currentStepIndex === -1) {
-                // Processo não iniciado
                 const startBtn = document.createElement('button');
                 startBtn.className = 'btn primary-btn';
-                
-                if (process.vehicleType === 'separacao') {
-                    startBtn.innerHTML = '<i class="fas fa-play"></i> Iniciar Separação';
-                    startBtn.addEventListener('click', () => showQrCodeModal('Iniciar Separação', 'start', process.id, 'separacao'));
-                } else if (process.vehicleType === 'cliente_retira') {
-                    startBtn.innerHTML = '<i class="fas fa-play"></i> Iniciar Separação';
-                    startBtn.addEventListener('click', () => showQrCodeModal('Iniciar Separação', 'start', process.id, 'separacao'));
-                } else {
-                    startBtn.innerHTML = '<i class="fas fa-play"></i> Iniciar Vistoria';
-                    startBtn.addEventListener('click', () => showQrCodeModal('Iniciar Vistoria', 'start', process.id, 'vistoria'));
-                }
-                
+                startBtn.innerHTML = '<i class="fas fa-play"></i> Iniciar Vistoria';
+                startBtn.addEventListener('click', () => showQrCodeModal('Iniciar Vistoria', 'start', process.id, 'vistoria'));
                 container.appendChild(startBtn);
             } else {
                 const currentStep = stepsOrder[currentStepIndex];
                 const stepData = process[currentStep];
                 
                 if (stepData && stepData.status === 'in_progress') {
-                    // Etapa em andamento
                     const endBtn = document.createElement('button');
                     endBtn.className = 'btn primary-btn';
                     endBtn.innerHTML = '<i class="fas fa-stop"></i> Finalizar Etapa';
@@ -608,7 +572,6 @@
                         container.appendChild(addBtn);
                     }
                 } else {
-                    // Próxima etapa pendente
                     const startBtn = document.createElement('button');
                     startBtn.className = 'btn primary-btn';
                     startBtn.innerHTML = '<i class="fas fa-play"></i> Iniciar Etapa';
@@ -847,7 +810,6 @@
                     updates[`${step}/duration`] = (Date.now() - process[step].startTime) / 1000;
                 }
                 
-                // Apenas marcar como completo quando for a última etapa
                 const currentIndex = stepsOrder.indexOf(step);
                 const nextStep = stepsOrder[currentIndex + 1];
                 
@@ -855,7 +817,6 @@
                     updates[`${nextStep}/status`] = 'pending';
                     updates.currentStep = nextStep;
                 } else {
-                    // Última etapa concluída
                     updates.status = 'completed';
                     updates.endTime = now;
                 }
@@ -879,16 +840,7 @@
         }
 
         function getStepsOrder(vehicleType) {
-            switch(vehicleType) {
-                case 'carregamento':
-                    return ['vistoria', 'abertura', 'separacao', 'carregamento', 'fechamento'];
-                case 'cliente_retira':
-                    return ['separacao'];
-                case 'separacao':
-                    return ['separacao'];
-                default:
-                    return [];
-            }
+            return ['vistoria', 'abertura', 'fechamento'];
         }
 
         function confirmAssistants() {
@@ -983,8 +935,6 @@
             const stepNames = {
                 'vistoria': 'Vistoria',
                 'abertura': 'Abertura do Caminhão',
-                'separacao': 'Separação',
-                'carregamento': 'Carregamento',
                 'fechamento': 'Fechamento do Caminhão'
             };
             return stepNames[stepId] || stepId;
@@ -992,9 +942,7 @@
 
         function getProcessTypeLabel(type) {
             const labels = {
-                'carregamento': 'Carregamento',
-                'cliente_retira': 'Cliente Retira',
-                'separacao': 'Separação'
+                'carregamento': 'Carregamento'
             };
             return labels[type] || type;
         }
